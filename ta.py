@@ -91,5 +91,5 @@ station_ids = stations_tests_cumulative.keys()
 for station_id in station_ids:
     sorted_station_data: list[tuple[datetime.datetime, float]] = sorted(stations_tests_cumulative[stationid].items())
     for day_info in sorted_station_data:
-        result: str = day_info[0].strftime("%d/%m/%Y ") + str(day_info[1]) + " seconds\n"
+        result: str = day_info[0].strftime("%d/%m/%Y,") + str(day_info[1]) + " seconds\n"
         result_file.write(result)
