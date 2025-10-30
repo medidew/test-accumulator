@@ -86,10 +86,11 @@ for entry in os.listdir(csv_directory_path):
             stations_tests_cumulative[stationid][test_date] += test["test_duration"]
 
 result_file = open("result.csv", "w")
+print(stations_tests_cumulative)
 
 station_ids = stations_tests_cumulative.keys()
 for station_id in station_ids:
     sorted_station_data: list[tuple[datetime.datetime, float]] = sorted(stations_tests_cumulative[stationid].items())
     for day_info in sorted_station_data:
-        result: str = day_info[0].strftime("%d/%m/%Y,") + str(day_info[1]) + " seconds\n"
+        result: str = day_info[0].strftime("%d/%m/%Y,") + str(round(day_info[1])) + "\n"
         result_file.write(result)
