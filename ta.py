@@ -89,10 +89,7 @@ result_file = open("result.csv", "w")
 result_file.write("Station ID,Date Tested,Total Test Duration\n")
 
 for station_id, tests in stations_tests_cumulative.items():
-    print(station_id)
-    print(tests)
     sorted_station_data: list[tuple[datetime.datetime, float]] = sorted(tests.items())
-    print(sorted_station_data)
     for day_info in sorted_station_data:
         result: str = station_id + "," + day_info[0].strftime("%d/%m/%Y,") + str(round(day_info[1])) + "\n"
         result_file.write(result)
