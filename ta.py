@@ -121,6 +121,10 @@ duration_result_file.close()
 
 quantity_result_file = open("quantity_result.csv", "w")
 quantity_result_file.write("Product,Test Quantity\n")
+total_tests = 0
 
 for product, quantity in product_test_quantity.items():
+    total_tests += quantity
     quantity_result_file.write(product + "," + str(quantity) + "\n")
+
+quantity_result_file.write("\nTotal Test Quantity\n" + str(total_tests) + "\n")
