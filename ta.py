@@ -18,6 +18,8 @@ def read_csv(file_path) -> dict[str, list[dict[str]]]:
             if len(row) == 0:
                 continue
             match row[0]:
+                case "Product":
+                    test["product"] = row[1]
                 case "Tested":
                     test["test_date"] = datetime.datetime.strptime(row[2], CSV_DATE_FORMAT)
                 case "Station ID":
@@ -64,32 +66,61 @@ if not os.path.isdir(csv_directory_path):
     print(f"Error: The path '{csv_directory_path}' is not a valid directory.")
     sys.exit(1)
     
-stations_tests_cumulative: dict[str, dict] = {}
+station_tests_duration_cumulative: dict[str, dict] = {}
+product_test_quantity: dict[str, int] = {}
 
-for entry in os.listdir(csv_directory_path):
-    if not entry.endswith('.csv'):
-        continue
+def searchAndGroupByDate(csv_directory_path):
+    for entry in os.listdir(csv_directory_path):
+        file_path = os.path.join(csv_directory_path, entry)
 
-    file_path = os.path.join(csv_directory_path, entry)
-    print(file_path)
-    station_tests = read_csv(file_path)
-
-    for stationid in station_tests.keys():
-        if stations_tests_cumulative.get(stationid) == None:
-            stations_tests_cumulative[stationid] = {}
+        if os.path.isdir(file_path):
+            searchAndGroupByDate(file_path)
+            continue
+        elif not entry.endswith(".csv"):
+            print("skipping non-csv/non-dir: " + file_path)
+            continue
+        else:
+            print(file_path)
         
-        for test in station_tests[stationid]:
-            test_date = getCorrectDate(test["test_date"], sys.argv[2].lstrip("-"))
-            if stations_tests_cumulative[stationid].get(test_date) == None:
-                stations_tests_cumulative[stationid][test_date] = 0
-            
-            stations_tests_cumulative[stationid][test_date] += test["test_duration"]
+        station_tests = read_csv(file_path)
 
-result_file = open("result.csv", "w")
-result_file.write("Station ID,Date Tested,Total Test Duration\n")
+        # get total test duration on station for given time period
+        for stationid in station_tests.keys():
+            if station_tests_duration_cumulative.get(stationid) == None:
+                station_tests_duration_cumulative[stationid] = {}
 
-for station_id, tests in stations_tests_cumulative.items():
+            for test_instance in station_tests[stationid]:
+                test_date = getCorrectDate(test_instance["test_date"], sys.argv[2].lstrip("-"))
+                if station_tests_duration_cumulative[stationid].get(test_date) == None:
+                    station_tests_duration_cumulative[stationid][test_date] = 0
+
+                station_tests_duration_cumulative[stationid][test_date] += test_instance["test_duration"]
+        
+        # get how many tests ran on each product
+        for test_list in station_tests.values():
+            for test_instance in test_list:
+                product = test_instance["product"]
+                if product_test_quantity.get(product) == None:
+                    product_test_quantity[product] = 0
+                product_test_quantity[product] += 1
+
+
+searchAndGroupByDate(csv_directory_path)
+
+duration_result_file = open("duration_result.csv", "w")
+duration_result_file.write("Station ID,Date Tested,Total Test Duration\n")
+
+for station_id, tests in station_tests_duration_cumulative.items():
     sorted_station_data: list[tuple[datetime.datetime, float]] = sorted(tests.items())
+    print(sorted_station_data)
     for day_info in sorted_station_data:
         result: str = station_id + "," + day_info[0].strftime("%d/%m/%Y,") + str(round(day_info[1])) + "\n"
-        result_file.write(result)
+        duration_result_file.write(result)
+
+duration_result_file.close()
+
+quantity_result_file = open("quantity_result.csv", "w")
+quantity_result_file.write("Product,Test Quantity\n")
+
+for product, quantity in product_test_quantity.items():
+    quantity_result_file.write(product + "," + str(quantity) + "\n")
