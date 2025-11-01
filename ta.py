@@ -6,6 +6,9 @@ import sys
 import os
 
 CSV_DATE_FORMAT = "%d %B %Y"
+MAX_MONTH_TESTING_HOURS = 160
+MAX_WEEK_TESTING_HOURS = 37
+MAX_DAY_TESTING_HOURS = 37/5
 
 def read_csv(file_path) -> dict[str, list[dict[str]]]:
     with open(file_path, mode='r', newline='', encoding='utf-8', errors='ignore') as csvfile:
@@ -58,11 +61,11 @@ def getCorrectDate(date: datetime.datetime, flag: str) -> datetime.datetime:
 def getMaxTime(flag: str) -> float:
     match flag:
         case "d":
-            return 37/5
+            return MAX_DAY_TESTING_HOURS
         case "w":
-            return 37
+            return MAX_WEEK_TESTING_HOURS
         case "m":
-            return 160
+            return MAX_MONTH_TESTING_HOURS
     
     print(f"Error: getMaxTime() given invalid flag '{flag}'.")
     sys.exit(1)
@@ -72,7 +75,7 @@ def getMaxTime(flag: str) -> float:
 ############
 
 if len(sys.argv) > 4 or len(sys.argv) < 4:
-    print("Usage: python ta.py [csv_directory_path] [graph_threshold%] -[d|w|m]\nExisting flags:\n   -d : groups cumulative test times by day\n   -w : groups cumulative test times by week\n   -m : groups cumulative test times by month")
+    print("Usage: python ta.py [csv_directory_path] [graph_threshold%] [d|w|m]\n")
     sys.exit(1)
 
 csv_directory_path = sys.argv[1]
@@ -85,16 +88,20 @@ threshold_flag: float = 0.0
 try:
     threshold_flag = int(sys.argv[2]) / 100
     if threshold_flag > 1:
-        print(f"Error: The flag graph_threshold% must be a positive integer less than or equal to 100.")
+        print(f"Error: graph_threshold% must be a positive integer less than or equal to 100.")
         sys.exit(1)
     elif threshold_flag < 0:
-        print(f"Error: The flag graph_threshold% must be a positive integer less than or equal to 100.")
+        print(f"Error: graph_threshold% must be a positive integer less than or equal to 100.")
         sys.exit(1)
 except ValueError:
-    print(f"Error: The flag graph_threshold% must be a positive integer less than or equal to 100.")
+    print(f"Error: graph_threshold% must be a positive integer less than or equal to 100.")
     sys.exit(1)
+    
+time_flag = sys.argv[3]
 
-time_flag = sys.argv[3].lstrip("-")
+if time_flag != "d" and time_flag != "w" and time_flag != "m":
+    print(f"Error: must select one of d|w|m (days|weeks|months).")
+    sys.exit(1)
 
 station_tests_duration_cumulative: dict[str, dict] = {}
 product_test_quantity: dict[str, int] = {}
