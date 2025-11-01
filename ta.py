@@ -1,4 +1,6 @@
 import datetime
+import matplotlib.pyplot as plt
+import math
 import csv
 import sys
 import os
@@ -53,19 +55,47 @@ def getCorrectDate(date: datetime.datetime, flag: str) -> datetime.datetime:
     print(f"Error: getCorrectDate() given invalid flag '{flag}'.")
     sys.exit(1)
 
+def getMaxTime(flag: str) -> float:
+    match flag:
+        case "d":
+            return 37/5
+        case "w":
+            return 37
+        case "m":
+            return 160
+    
+    print(f"Error: getMaxTime() given invalid flag '{flag}'.")
+    sys.exit(1)
+
 ############
 #   MAIN   #
 ############
 
-if len(sys.argv) > 3 or len(sys.argv) < 3:
-    print("Usage: python ta.py [csv_directory_path] -[d|w|m]\nExisting flags:\n   -d : groups cumulative test times by day\n   -w : groups cumulative test times by week\n   -m : groups cumulative test times by month")
+if len(sys.argv) > 4 or len(sys.argv) < 4:
+    print("Usage: python ta.py [csv_directory_path] [graph_threshold%] -[d|w|m]\nExisting flags:\n   -d : groups cumulative test times by day\n   -w : groups cumulative test times by week\n   -m : groups cumulative test times by month")
     sys.exit(1)
 
 csv_directory_path = sys.argv[1]
 if not os.path.isdir(csv_directory_path):
     print(f"Error: The path '{csv_directory_path}' is not a valid directory.")
     sys.exit(1)
-    
+
+threshold_flag: float = 0.0
+
+try:
+    threshold_flag = int(sys.argv[2]) / 100
+    if threshold_flag > 1:
+        print(f"Error: The flag graph_threshold% must be a positive integer less than or equal to 100.")
+        sys.exit(1)
+    elif threshold_flag < 0:
+        print(f"Error: The flag graph_threshold% must be a positive integer less than or equal to 100.")
+        sys.exit(1)
+except ValueError:
+    print(f"Error: The flag graph_threshold% must be a positive integer less than or equal to 100.")
+    sys.exit(1)
+
+time_flag = sys.argv[3].lstrip("-")
+
 station_tests_duration_cumulative: dict[str, dict] = {}
 product_test_quantity: dict[str, int] = {}
 
@@ -90,7 +120,7 @@ def searchAndGroupByDate(csv_directory_path):
                 station_tests_duration_cumulative[stationid] = {}
 
             for test_instance in station_tests[stationid]:
-                test_date = getCorrectDate(test_instance["test_date"], sys.argv[2].lstrip("-"))
+                test_date = getCorrectDate(test_instance["test_date"], time_flag)
                 if station_tests_duration_cumulative[stationid].get(test_date) == None:
                     station_tests_duration_cumulative[stationid][test_date] = 0
 
@@ -107,15 +137,68 @@ def searchAndGroupByDate(csv_directory_path):
 
 searchAndGroupByDate(csv_directory_path)
 
+def padDateLabels(sorted_station_data: list[tuple[datetime.datetime, float]], flag: str) -> list[tuple[datetime.datetime, float]]:
+    pad = datetime.timedelta()
+
+    match flag:
+        case "d":
+            pad = datetime.timedelta(days=1)
+        case "w":
+            pad = datetime.timedelta(weeks=1)
+        case "m":
+            pad = datetime.timedelta(weeks=5)
+    
+    if len(sorted_station_data) == 0:
+        return sorted_station_data
+    
+    padded_station_data = sorted_station_data.copy()
+
+    index = 0
+    pads = 1
+    while index < len(sorted_station_data):
+        next_interval = getCorrectDate(sorted_station_data[index][0] + pad, flag)
+
+        if index + 1 == len(sorted_station_data):
+            index += 1
+            continue
+        
+        if sorted_station_data[index + 1][0] != next_interval:
+            padded_station_data.insert(index + pads, (next_interval, 0))
+            pads += 1
+        
+        index += 1
+    
+    return padded_station_data
+
 duration_result_file = open("duration_result.csv", "w")
 duration_result_file.write("Station ID,Date Tested,Total Test Duration\n")
 
 for station_id, tests in station_tests_duration_cumulative.items():
     sorted_station_data: list[tuple[datetime.datetime, float]] = sorted(tests.items())
-    print(sorted_station_data)
-    for day_info in sorted_station_data:
-        result: str = station_id + "," + day_info[0].strftime("%d/%m/%Y,") + str(round(day_info[1])) + "\n"
+    sorted_station_data = padDateLabels(sorted_station_data, time_flag)
+
+    date_results = []
+    duration_results = []
+
+    for date_info in sorted_station_data:
+        date_results.append(date_info[0].strftime("%d/%m/%Y"))
+        duration_results.append(date_info[1]/3600)
+
+        result: str = station_id + "," + date_info[0].strftime("%d/%m/%Y,") + str(round(date_info[1])) + "\n"
         duration_result_file.write(result)
+    
+    n = len(date_results)
+    plt.figure(figsize=(15, 9))
+    plt.bar(date_results, duration_results)
+    max_test_time = getMaxTime(time_flag)
+    plt.axhline(y=max_test_time, color="red")
+    plt.axhline(y=max_test_time * threshold_flag, color="green")
+    plt.title("Cumulative Test Duration")
+    plt.ylabel("Hours")
+    plt.xticks(date_results[::math.ceil(n/30)], rotation=45, ha="right")
+    plt.savefig("graphs/" + station_id + ".pdf")
+    plt.close()
+
 
 duration_result_file.close()
 
