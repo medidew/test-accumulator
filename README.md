@@ -20,6 +20,6 @@ Use the script:
 Usage: python ta.py [csv_directory_path] [graph_threshold%] [days|weeks|months]
 ```
 
-Results will be output to `quantity_result.csv`, `duration_result.csv`, and `/graphs/`
+Results will be output to `quantity_result.csv`, `duration_result.csv`, and `/graphs/`.
 
 ### Developed using Python 3.12.3
