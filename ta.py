@@ -6,6 +6,7 @@ import sys
 import os
 
 CSV_DATE_FORMAT = "%d %B %Y"
+
 MAX_MONTH_TESTING_HOURS = 160
 MAX_WEEK_TESTING_HOURS = 37
 MAX_DAY_TESTING_HOURS = 37/5
@@ -46,7 +47,7 @@ def monthCommencing(date: datetime.datetime) -> datetime.datetime:
     adjust = datetime.timedelta(days=date.day-1)
     return date - adjust
 
-def getCorrectDate(date: datetime.datetime, flag: str) -> datetime.datetime:
+def getCommencingDate(date: datetime.datetime, flag: str) -> datetime.datetime:
     match flag:
         case "d":
             return date
@@ -106,7 +107,8 @@ if time_flag != "d" and time_flag != "w" and time_flag != "m":
 station_tests_duration_cumulative: dict[str, dict] = {}
 product_test_quantity: dict[str, int] = {}
 
-def searchAndGroupByDate(csv_directory_path):
+
+def searchAndGroupByDate(csv_directory_path: str):
     for entry in os.listdir(csv_directory_path):
         file_path = os.path.join(csv_directory_path, entry)
 
@@ -116,9 +118,8 @@ def searchAndGroupByDate(csv_directory_path):
         elif not entry.endswith(".csv"):
             print("skipping non-csv/non-dir: " + file_path)
             continue
-        else:
-            print(file_path)
-        
+
+        print(file_path)
         station_tests = read_csv(file_path)
 
         # get total test duration on station for given time period
@@ -127,7 +128,7 @@ def searchAndGroupByDate(csv_directory_path):
                 station_tests_duration_cumulative[stationid] = {}
 
             for test_instance in station_tests[stationid]:
-                test_date = getCorrectDate(test_instance["test_date"], time_flag)
+                test_date = getCommencingDate(test_instance["test_date"], time_flag)
                 if station_tests_duration_cumulative[stationid].get(test_date) == None:
                     station_tests_duration_cumulative[stationid][test_date] = 0
 
@@ -143,6 +144,7 @@ def searchAndGroupByDate(csv_directory_path):
 
 
 searchAndGroupByDate(csv_directory_path)
+
 
 def padDateLabels(sorted_station_data: list[tuple[datetime.datetime, float]], flag: str) -> list[tuple[datetime.datetime, float]]:
     pad = datetime.timedelta()
@@ -163,7 +165,7 @@ def padDateLabels(sorted_station_data: list[tuple[datetime.datetime, float]], fl
     index = 0
     pads = 1
     while index < len(sorted_station_data):
-        next_interval = getCorrectDate(sorted_station_data[index][0] + pad, flag)
+        next_interval = getCommencingDate(sorted_station_data[index][0] + pad, flag)
 
         if index + 1 == len(sorted_station_data):
             index += 1
@@ -177,12 +179,13 @@ def padDateLabels(sorted_station_data: list[tuple[datetime.datetime, float]], fl
     
     return padded_station_data
 
+
 duration_result_file = open("duration_result.csv", "w")
 duration_result_file.write("Station ID,Date Tested,Total Test Duration\n")
 
 for station_id, tests in station_tests_duration_cumulative.items():
     sorted_station_data: list[tuple[datetime.datetime, float]] = sorted(tests.items())
-    sorted_station_data = padDateLabels(sorted_station_data, time_flag)
+    sorted_station_data = padDateLabels(sorted_station_data, time_flag) # ensures no gaps in graph dates
 
     date_results = []
     duration_results = []
@@ -194,6 +197,7 @@ for station_id, tests in station_tests_duration_cumulative.items():
         result: str = station_id + "," + date_info[0].strftime("%d/%m/%Y,") + str(round(date_info[1])) + "\n"
         duration_result_file.write(result)
     
+    # graph plotting
     n = len(date_results)
     plt.figure(figsize=(15, 9))
     plt.bar(date_results, duration_results)
@@ -206,13 +210,12 @@ for station_id, tests in station_tests_duration_cumulative.items():
     plt.savefig("graphs/" + station_id + ".pdf")
     plt.close()
 
-
 duration_result_file.close()
 
 quantity_result_file = open("quantity_result.csv", "w")
 quantity_result_file.write("Product,Test Quantity\n")
-total_tests = 0
 
+total_tests = 0
 sorted_quantity_data = sorted(product_test_quantity.items())
 
 for product, quantity in sorted_quantity_data:
