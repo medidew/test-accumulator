@@ -1,4 +1,4 @@
-# Test Accumulator (TA)
+# Test Accumulator
 
 Clone the repository and navigate to its corresponding directory.
 
